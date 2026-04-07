@@ -21,7 +21,6 @@ local function ApplyCameraSettings()
         CameraTacMaxZoomOverview = zoom_max_overview,
         CameraTacMinZoomOverview = zoom_min,
         CameraTacLookAtAngle = pitch_angle * 60,
-        CameraTacLookAtAngleInOverview = pitch_angle * 60,
         CameraTacClampToTerrain = true,
     }
 
@@ -45,12 +44,6 @@ local function ApplyCameraSettings()
             end
         end
     end
-
-    -- Apply settings to the active camera if possible
-    if cameraTac.IsActive() then
-        cameraTac.SetupLookAtAngle()
-        cameraTac.Normalize()
-    end
 end
 
 -- Re-apply settings when options are changed in the menu
@@ -60,37 +53,6 @@ function OnMsg.ApplyModOptions(id)
     end
 end
 
--- Hook cameraTac functions to ensure our settings are persistent
-local function HookCameraTac(func_name)
-    local old_func = cameraTac[func_name]
-    if old_func then
-        cameraTac[func_name] = function(...)
-            -- Apply BEFORE engine might read hr (e.g. for SetZoom bounds)
-            ApplyCameraSettings() 
-            local res = old_func(...)
-            -- Re-apply to fix any clamping done by the engine
-            ApplyCameraSettings()
-            return res
-        end
-    end
-end
-
--- Hook cameraTac.SetOverview specifically to handle hr.CameraTacLookAtAngleInOverview
-local old_SetOverview = cameraTac.SetOverview
-if old_SetOverview then
-    cameraTac.SetOverview = function(overview, ...)
-        ApplyCameraSettings() -- Apply BEFORE engine might read hr
-        local res = old_SetOverview(overview, ...)
-        -- SetOverview often triggers SetupLookAtAngle and Normalize internally
-        ApplyCameraSettings() -- Apply AFTER engine might have changed something
-        return res
-    end
-end
-
--- HookCameraTac("SetZoom")
--- HookCameraTac("Normalize")
--- HookCameraTac("SetupLookAtAngle")
--- HookCameraTac("SetFloor")
 
 -- Hook AdjustCombatCamera to prevent the game from overriding our camera settings during the enemy turn
 local old_AdjustCombatCamera = AdjustCombatCamera
@@ -99,6 +61,7 @@ function AdjustCombatCamera(state, ...)
         CreateGameTimeThread(AdjustCombatCamera, state, ...)
         return
     end
+
     if state == "set" then
         local instant, target, floor, sleepTime, noFitCheck = ...
         if target then
@@ -110,30 +73,17 @@ function AdjustCombatCamera(state, ...)
                 SnapCameraToObj(target, "force", floor, sleepTime)
             end
         end
-        
-        UnlockCameraMovement("CombatCamera")
-        cameraTac.SetForceMaxZoom(false)
-        
-        return
-    elseif state == "reset" then
-        local instant, target, floor, sleepTime, noFitCheck = ...
-        -- We must keep the original reset logic for hr and cameraTac
-        -- but immediately override it with our settings
-        old_AdjustCombatCamera(state, ...)
-        ApplyCameraSettings()
         return
     end
-    return old_AdjustCombatCamera(state, ...)
+
+    local res = old_AdjustCombatCamera(state, ...)
+    ApplyCameraSettings()
+    return res
 end
 
 -- Globally override LockCameraMovement to prevent camera locking during combat
-local old_LockCameraMovement = LockCameraMovement
 function LockCameraMovement(reason)
-    if reason == "CombatCamera" or reason == "CivilianTurn" or reason == "pindown" or reason == "bombard" or reason == "grunty perk" or reason == "TimedExplosives" then
-        -- We want to prevent these tactical camera movement locking during combat
-        return
-    end
-    return old_LockCameraMovement(reason)
+    -- We want to prevent tactical camera movement locking during combat
 end
 
 -- Ensure cameraTac.SetForceMaxZoom doesn't lock zoom
