@@ -2,7 +2,13 @@
 -- Overrides min and max zoom for tactical and overview cameras, prevents clamping,
 -- prevents forced zoom due to combat actions, and allows overriding the camera pitch angle.
 
-local function ApplyCameraSettings()
+-- Local variables for camera state caching
+local cachedTactical = false
+local cachedZoomTactical = false
+local cachedOverview = false
+local cachedZoomOverview = false
+
+local function ApplyCameraSettings(forced_overview)
     local options = CurrentModOptions
     if not options or not options.GetProperty then return end
 
@@ -11,18 +17,22 @@ local function ApplyCameraSettings()
     local zoom_step = options:GetProperty("cdr_zoom_step") or 15
     local pitch_angle = options:GetProperty("cdr_pitch_angle") or 60
 
-    local is_overview = cameraTac.GetIsInOverview()
+    local is_overview = forced_overview
+    if is_overview == nil then
+        is_overview = cameraTac.GetIsInOverview()
+    end
     
     -- In overview, zoom limits are ignored by the engine's C++ input path.
     -- The only way to move the 2200 plateau is to change the base Height.
     local settings = {
-        CameraTacMinZoom = zoom_min,
-        CameraTacMaxZoom = zoom_max,
-        CameraTacZoomStep = zoom_step,
-        CameraTacLookAtAngle = is_overview and hr.CameraTacLookAtAngleInOverview or (pitch_angle * 60),
+        CameraTacMinZoom = 22, -- 5000 in overview to break the 2.0x height clamp
+        CameraTacMaxZoom = 220,
+        CameraTacZoomStep = 22,
         CameraTacClampToTerrain = true,
-        CameraTacHeight = is_overview and 5000 or 1100, -- 5000 in overview to break the 2.0x height clamp
+        CameraTacHeight = not cameraTac.GetIsInOverview() and 220 or 220, -- 5000 in overview to break the 2.0x height clamp
     }
+
+    --cameraTac.SetLookAtAngle(not cameraTac.GetIsInOverview() and hr.CameraTacLookAtAngle or hr.CameraTacLookAtAngleInOverview)
     
     -- Apply to hr table
     for k, v in pairs(settings) do
@@ -37,7 +47,6 @@ function OnMsg.ApplyModOptions(id)
     end
 end
 
-
 -- Hook AdjustCombatCamera to prevent the game from overriding our camera settings during the enemy turn
 local old_AdjustCombatCamera = AdjustCombatCamera
 function AdjustCombatCamera(state, ...)
@@ -47,7 +56,6 @@ function AdjustCombatCamera(state, ...)
             if not floor then floor = GetStepFloor(target) end
             SnapCameraToObj(target, "force", floor, sleepTime or 1000)
         end
-        cameraTac.SetZoom(1000)
         return
     end
     local res = old_AdjustCombatCamera(state, ...)
@@ -65,7 +73,6 @@ local old_SetForceMaxZoom = cameraTac.SetForceMaxZoom
 function cameraTac.SetForceMaxZoom(force, ...)
     if force then
         -- Do nothing to prevent the game from forcing a zoom level/locking zoom
-        -- print("Prevented SetForceMaxZoom(true)")
         return
     end
     return old_SetForceMaxZoom(force, ...)
@@ -79,69 +86,58 @@ end
 
 -- Clear the cache when loading a new map to prevent jumping to old coordinates
 function OnMsg.NewMapLoaded()
-    cachedTacticalPos = false
-    cachedTacticalZoom = false
-    cachedTacticalFloor = false
-    cachedOverviewPos = false
-    cachedOverviewZoom = false
-    cachedOverviewFloor = false
+    cachedTactical = false
+    cachedOverview = false
     ApplyCameraSettings()
     UnlockCameraMovement(nil, "unlock_all")
 end
 
-
--- Local variables to cache camera states
-local cachedTacticalPos = false
-local cachedTacticalZoom = false
-local cachedTacticalFloor = false
-local cachedOverviewPos = false
-local cachedOverviewZoom = false
-local cachedOverviewFloor = false
-
--- Use a hook on the engine's SetOverview to capture position BEFORE the switch happens
+-- Cache state and perform switch in a single message-driven flow
 local old_SetOverview = cameraTac.SetOverview
-local in_set_overview = false
 function cameraTac.SetOverview(set, ...)
-    if in_set_overview then return old_SetOverview(set, ...) end
-    in_set_overview = true
-    
-    if set then
-        -- ENTERING Overview: Capture current Tactical state (Pos and Zoom)
-        local pos, lookAt = cameraTac.GetPosLookAt()
-        cachedTacticalPos = { pos, lookAt }
-        cachedTacticalZoom = cameraTac.GetZoom()
-        cachedTacticalFloor = cameraTac.GetFloor()
+
+    -- Cache current state BEFORE switching
+    local zoom = cameraTac.GetZoom()
+    local pos, lookAt = cameraTac.GetPosLookAt()
+    local floor = cameraTac.GetFloor()
+    local state = { pos = pos, lookAt = lookAt, floor = floor }
+
+    if cameraTac.GetIsInOverview() then
+        cachedOverview = state
+        cachedZoomOverview = zoom
     else
-        -- LEAVING Overview: Capture current Overview state (Pos and Zoom)
-        local pos, lookAt = cameraTac.GetPosLookAt()
-        cachedOverviewPos = { pos, lookAt }
-        cachedOverviewZoom = cameraTac.GetZoom()
-        cachedOverviewFloor = cameraTac.GetFloor()
+        cachedTactical = state
+        cachedZoomTactical = zoom
     end
-    
+
+    -- Perform the actual mode switch (engine call)
     local res = old_SetOverview(set, ...)
-    
-    -- After the engine switches, apply our mod's limits (height 5000, etc.)
-    ApplyCameraSettings()
-    
-    -- Now restore only the position and zoom for the destination state
-    if set and cachedOverviewPos then
-        local pos, lookAt = cachedOverviewPos[1], cachedOverviewPos[2]
-        cameraTac.SetPosLookAtAndFloor(pos, lookAt, cachedOverviewFloor or 0, 0)
-        if cachedOverviewZoom then cameraTac.SetZoom(cachedOverviewZoom) end
-    elseif not set and cachedTacticalPos then
-        local pos, lookAt = cachedTacticalPos[1], cachedTacticalPos[2]
-        cameraTac.SetPosLookAtAndFloor(pos, lookAt, cachedTacticalFloor or 0, 0)
-        if cachedTacticalZoom then cameraTac.SetZoom(cachedTacticalZoom) end
-    end
-    
-    in_set_overview = false
+
+    -- Trigger hr settings update for the new mode
+    ApplyCameraSettings(set)
+
+    -- Restore destination state AFTER switching
+    local restore = set and cachedOverview or cachedTactical
+    local restoreZoom = set and cachedZoomOverview or cachedZoomTactical
+
+    if restore then cameraTac.SetPosLookAtAndFloor(restore.pos, restore.lookAt, restore.floor, 0) end
+    if restoreZoom then cameraTac.SetZoom(restoreZoom, 0) end
+
+    cameraTac.SetLookAtAngle(not cameraTac.GetIsInOverview() and hr.CameraTacLookAtAngle or hr.CameraTacLookAtAngleInOverview)
+
     return res
 end
 
-function OnMsg.CameraTacOverview(set)
-    -- This message is now just a backup to ensure settings are applied
-    ApplyCameraSettings()
+local old_OnMouseWheelForward = IModeCommonUnitControl.OnMouseWheelForward
+function IModeCommonUnitControl:OnMouseWheelForward(...)
+    print(string.format("Zoom: %s - InOverview: %s", tostring(cameraTac.GetZoom()), tostring(cameraTac.GetIsInOverview())))
+    return old_OnMouseWheelForward(self, ...)
+end
+
+local old_OnMouseWheelBack = IModeCommonUnitControl.OnMouseWheelBack
+function IModeCommonUnitControl:OnMouseWheelBack(...)    
+    print(string.format("Zoom: %s - InOverview: %s", tostring(cameraTac.GetZoom()), tostring(cameraTac.GetIsInOverview())))
+    return old_OnMouseWheelBack(self, ...)
 end
 
 -- Initial application
