@@ -8,6 +8,12 @@ return PlaceObj('ModDef', {
 	'code', {
 		"Code/Script.lua",
 	},
+	'loctables', {
+		{
+			filename = "Languages/en.csv",
+			language = "English",
+		},
+	},
 	'default_options', {
 		cdr_pitch_angle = 60,
 		cdr_zoom_max = 200,

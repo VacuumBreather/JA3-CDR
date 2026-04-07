@@ -32,4 +32,8 @@ return {
 	PlaceObj('ModItemCode', {
 		'CodeFileName', "Code/Script.lua",
 	}),
+	PlaceObj('ModItemLocTable', {
+		'language', "English",
+		'filename', "Languages/en.csv",
+	}),
 }
