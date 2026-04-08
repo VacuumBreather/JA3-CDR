@@ -26,6 +26,7 @@ return PlaceObj('ModDef', {
 		cdr_toggle_SetForceMaxZoom = true,
 		cdr_toggle_SetOverview = true,
 		cdr_toggle_SnapCameraEnemyTurn = true,
+		cdr_toggle_SnapCameraPlayerActions = true,
 		cdr_zoom_step = 15,
 	},
 	'saved', 1775566740,

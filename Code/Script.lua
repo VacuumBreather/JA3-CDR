@@ -97,6 +97,24 @@ function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, f
     return cdr_old_CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly, ...)
 end
 
+local cdr_old_SetActionCameraDirect = SetActionCameraDirect
+function SetActionCameraDirect(...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+        return
+    end
+    return cdr_old_SetActionCameraDirect(...)
+end
+
+local cdr_old_SetActionCamera = SetActionCamera
+function SetActionCamera(...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+        return
+    end
+    return cdr_old_SetActionCamera(...)
+end
+
 local cdr_old_LockCameraMovement = LockCameraMovement
 function LockCameraMovement(reason, ...)
     local options = CurrentModOptions
@@ -111,9 +129,22 @@ end
 local cdr_old_SnapCameraToObj = SnapCameraToObj
 function SnapCameraToObj(obj, mode, floor, time, easing, ...)
     local options = CurrentModOptions
-    if options and options:GetProperty("cdr_toggle_SnapCameraEnemyTurn") then
-        if g_AIExecutionController then
+    if options then
+        if options:GetProperty("cdr_toggle_SnapCameraEnemyTurn") and g_AIExecutionController then
             return
+        end
+        
+        if options:GetProperty("cdr_toggle_SnapCameraPlayerActions") then
+            local igiModeDlg = GetInGameInterfaceModeDlg()
+            if igiModeDlg then
+                local modeClass = igiModeDlg.class
+                if modeClass:find("Attack") or      
+                   modeClass:find("Moving") or      
+                   modeClass:find("Aim") or         
+                   modeClass:find("AreaAim") then  
+                    return
+                 end
+             end
         end
     end
     return cdr_old_SnapCameraToObj(obj, mode, floor, time, easing, ...)
