@@ -73,7 +73,7 @@ end
 local cdr_old_StartCinematicCombatCamera = StartCinematicCombatCamera
 function StartCinematicCombatCamera(attacker, target, ...)
     local options = CurrentModOptions
-    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+    if options and options:GetProperty("cdr_toggle_CombatCamera") then
         return
     end
     return cdr_old_StartCinematicCombatCamera(attacker, target, ...)
@@ -82,7 +82,7 @@ end
 local cdr_old_CombatCam_ShowAttack = CombatCam_ShowAttack
 function CombatCam_ShowAttack(attacker, target, ...)
     local options = CurrentModOptions
-    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+    if options and options:GetProperty("cdr_toggle_CombatCamera") then
         return
     end
     return cdr_old_CombatCam_ShowAttack(attacker, target, ...)
@@ -91,7 +91,7 @@ end
 local cdr_old_CombatCam_ShowAttackNew = CombatCam_ShowAttackNew
 function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly, ...)
     local options = CurrentModOptions
-    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+    if options and options:GetProperty("cdr_toggle_CombatCamera") then
         return
     end
     return cdr_old_CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly, ...)
@@ -113,6 +113,15 @@ function SetActionCamera(...)
         return
     end
     return cdr_old_SetActionCamera(...)
+end
+
+local cdr_old_CalcActionCamera = CalcActionCamera
+function CalcActionCamera(...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+        return false, false, false, true
+    end
+    return cdr_old_CalcActionCamera(...)
 end
 
 local cdr_old_LockCameraMovement = LockCameraMovement

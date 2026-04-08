@@ -22,6 +22,7 @@ return PlaceObj('ModDef', {
 		cdr_tactical_min = 100,
 		cdr_toggle_AdjustCombatCamera = true,
 		cdr_toggle_CinematicCamera = true,
+		cdr_toggle_CombatCamera = true,
 		cdr_toggle_LockCameraMovement = true,
 		cdr_toggle_SetForceMaxZoom = true,
 		cdr_toggle_SetOverview = true,

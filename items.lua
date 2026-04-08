@@ -56,7 +56,13 @@ return {
 	PlaceObj('ModItemOptionBool', {
 		'name', "cdr_toggle_CinematicCamera",
 		'DisplayName', "Disable Cinematic Kill-Cams",
-		'Help', "Disables all cinematic close-up shots and action cameras that occur during attacks, kills, and AI actions.",
+		'Help', "Specifically disables close-up cinematic shots (kill-cams) during attacks.",
+		'DefaultValue', true,
+	}),
+	PlaceObj('ModItemOptionBool', {
+		'name', "cdr_toggle_CombatCamera",
+		'DisplayName', "Disable Tactical Zoom during Attacks",
+		'Help', "Prevents the tactical camera from zooming in and following attacker/target during combat actions.",
 		'DefaultValue', true,
 	}),
 	PlaceObj('ModItemOptionBool', {
