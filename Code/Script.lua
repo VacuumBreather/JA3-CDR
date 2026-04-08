@@ -13,8 +13,8 @@ local function ApplyCameraSettings(forced_overview)
     local options = CurrentModOptions
     if not options or not options.GetProperty then return end
 
-    local tactical_min = options:GetProperty("cdr_tacical_min") or 100
-    local tactical_max = options:GetProperty("cdr_tacical_max") or 1100
+    local tactical_min = options:GetProperty("cdr_tactical_min") or 100
+    local tactical_max = options:GetProperty("cdr_tactical_max") or 1100
     
     local overview_min = options:GetProperty("cdr_overview_min") or 100
     local overview_max = options:GetProperty("cdr_overview_max") or 1100
@@ -52,67 +52,93 @@ end
 -- Hook AdjustCombatCamera to prevent the game from overriding our camera settings during the enemy turn
 local cdr_old_AdjustCombatCamera = AdjustCombatCamera
 function AdjustCombatCamera(state, ...)
-    if state == "set" then
-        local instant, target, floor, sleepTime, noFitCheck = ...
-        if target then
-            if not floor then floor = GetStepFloor(target) end
-            SnapCameraToObj(target, "force", floor, sleepTime or 1000)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_AdjustCombatCamera") then
+        if state == "set" then
+            local instant, target, floor, sleepTime, noFitCheck = ...
+            if target then
+                if not floor then floor = GetStepFloor(target) end
+                SnapCameraToObj(target, "force", floor, sleepTime or 1000)
+            end
+            return
         end
+        local res = cdr_old_AdjustCombatCamera(state, ...)
+        ApplyCameraSettings()
+        return res
+    else
+        return cdr_old_AdjustCombatCamera(state, ...)
+    end
+end
+
+local cdr_old_StartCinematicCombatCamera = StartCinematicCombatCamera
+function StartCinematicCombatCamera(attacker, target, ...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
         return
     end
-    local res = cdr_old_AdjustCombatCamera(state, ...)
-    ApplyCameraSettings()
-    return res
+    return cdr_old_StartCinematicCombatCamera(attacker, target, ...)
 end
 
-function StartCinematicCombatCamera(attacker, target)
+local cdr_old_CombatCam_ShowAttack = CombatCam_ShowAttack
+function CombatCam_ShowAttack(attacker, target, ...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+        return
+    end
+    return cdr_old_CombatCam_ShowAttack(attacker, target, ...)
 end
 
-function CombatCam_ShowAttack(attacker, target)
+local cdr_old_CombatCam_ShowAttackNew = CombatCam_ShowAttackNew
+function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly, ...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
+        return
+    end
+    return cdr_old_CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly, ...)
 end
 
-function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly)
+local cdr_old_LockCameraMovement = LockCameraMovement
+function LockCameraMovement(reason, ...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_LockCameraMovement") then
+        -- We want to prevent tactical camera movement locking during combat
+        return
+    end
+    return cdr_old_LockCameraMovement(reason, ...)
 end
 
--- Globally override LockCameraMovement to prevent camera locking during combat
-function LockCameraMovement(reason)
-    -- We want to prevent tactical camera movement locking during combat
+
+local cdr_old_SnapCameraToObj = SnapCameraToObj
+function SnapCameraToObj(obj, mode, floor, time, easing, ...)
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_SnapCameraEnemyTurn") then
+        if g_AIExecutionController then
+            return
+        end
+    end
+    return cdr_old_SnapCameraToObj(obj, mode, floor, time, easing, ...)
 end
 
-
--- local cdr_old_SnapCameraToObj = SnapCameraToObj
--- function SnapCameraToObj(obj, mode, floor, time, easing)       
---     if g_AIExecutionController then
---         return
---     end
-        
---     local igiModeDlg = GetInGameInterfaceModeDlg()
---     if igiModeDlg then
---         local modeClass = igiModeDlg.class
---         if modeClass:find("Attack") or      
---            modeClass:find("Moving") or      
---            modeClass:find("Aim") or         
---            modeClass:find("AreaAim") then  
---             return
---          end
---      end
-        
---     return cdr_old_SnapCameraToObj(obj, mode, floor, time, easing)
--- end
-
--- Ensure cameraTac.SetForceMaxZoom doesn't lock zoom
 local cdr_old_SetForceMaxZoom = cameraTac.SetForceMaxZoom
 function cameraTac.SetForceMaxZoom(force, ...)
-    if force then
-        -- Do nothing to prevent the game from forcing a zoom level/locking zoom
-        return
+    local options = CurrentModOptions
+    if options and options:GetProperty("cdr_toggle_SetForceMaxZoom") then
+        if force then
+            -- Do nothing to prevent the game from forcing a zoom level/locking zoom
+            return
+        end
     end
     return cdr_old_SetForceMaxZoom(force, ...)
 end
 
--- Cache state and perform switch in a single message-driven flow
 local cdr_old_SetOverview = cameraTac.SetOverview
 function cameraTac.SetOverview(set, ...)
+    local options = CurrentModOptions
+    if not options or not options:GetProperty("cdr_toggle_SetOverview") then
+        local res = cdr_old_SetOverview(set, ...)
+        ApplyCameraSettings(set)
+        return res
+    end
 
     -- Cache current state BEFORE switching
     local zoom = cameraTac.GetZoom()
