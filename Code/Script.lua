@@ -2,11 +2,13 @@
 -- Overrides min and max zoom for tactical and overview cameras, prevents clamping,
 -- prevents forced zoom due to combat actions, and allows overriding the camera pitch angle.
 
+-- Persist camera zoom values in savegame
+GameVar("gv_CDR_ZoomTactical", false)
+GameVar("gv_CDR_ZoomOverview", false)
+
 -- Local variables for camera state caching
 local cachedTactical = false
-local cachedZoomTactical = false
 local cachedOverview = false
-local cachedZoomOverview = false
 
 local function ApplyCameraSettings(forced_overview)
     local options = CurrentModOptions
@@ -29,7 +31,7 @@ local function ApplyCameraSettings(forced_overview)
         CameraTacMaxZoom = 220,
         CameraTacZoomStep = 22,
         CameraTacClampToTerrain = true,
-        CameraTacHeight = not cameraTac.GetIsInOverview() and 220 or 220, -- 5000 in overview to break the 2.0x height clamp
+        CameraTacHeight = not cameraTac.GetIsInOverview() and 1100 or 1100, -- 5000 in overview to break the 2.0x height clamp
     }
 
     --cameraTac.SetLookAtAngle(not cameraTac.GetIsInOverview() and hr.CameraTacLookAtAngle or hr.CameraTacLookAtAngleInOverview)
@@ -38,17 +40,12 @@ local function ApplyCameraSettings(forced_overview)
     for k, v in pairs(settings) do
         hr[k] = v
     end
-end
-
--- Re-apply settings when options are changed in the menu
-function OnMsg.ApplyModOptions(id)
-    if id == CurrentModId then
-        ApplyCameraSettings()
-    end
+    UnlockCameraMovement(nil, "unlock_all")
+    cameraTac.SetForceMaxZoom(false)
 end
 
 -- Hook AdjustCombatCamera to prevent the game from overriding our camera settings during the enemy turn
-local old_AdjustCombatCamera = AdjustCombatCamera
+local cdr_old_AdjustCombatCamera = AdjustCombatCamera
 function AdjustCombatCamera(state, ...)
     if state == "set" then
         local instant, target, floor, sleepTime, noFitCheck = ...
@@ -58,9 +55,18 @@ function AdjustCombatCamera(state, ...)
         end
         return
     end
-    local res = old_AdjustCombatCamera(state, ...)
+    local res = cdr_old_AdjustCombatCamera(state, ...)
     ApplyCameraSettings()
     return res
+end
+
+function StartCinematicCombatCamera(attacker, target)
+end
+
+function CombatCam_ShowAttack(attacker, target)
+end
+
+function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly)
 end
 
 -- Globally override LockCameraMovement to prevent camera locking during combat
@@ -68,32 +74,39 @@ function LockCameraMovement(reason)
     -- We want to prevent tactical camera movement locking during combat
 end
 
+
+local cdr_old_SnapCameraToObj = SnapCameraToObj
+function SnapCameraToObj(obj, mode, floor, time, easing)       
+    if g_AIExecutionController then
+        return
+    end
+        
+    local igiModeDlg = GetInGameInterfaceModeDlg()
+    if igiModeDlg then
+        local modeClass = igiModeDlg.class
+        if modeClass:find("Attack") or      
+           modeClass:find("Moving") or      
+           modeClass:find("Aim") or         
+           modeClass:find("AreaAim") then  
+            return
+         end
+     end
+        
+    return cdr_old_SnapCameraToObj(obj, mode, floor, time, easing)
+end
+
 -- Ensure cameraTac.SetForceMaxZoom doesn't lock zoom
-local old_SetForceMaxZoom = cameraTac.SetForceMaxZoom
+local cdr_old_SetForceMaxZoom = cameraTac.SetForceMaxZoom
 function cameraTac.SetForceMaxZoom(force, ...)
     if force then
         -- Do nothing to prevent the game from forcing a zoom level/locking zoom
         return
     end
-    return old_SetForceMaxZoom(force, ...)
-end
-
--- Hook into messages to ensure settings are applied
-function OnMsg.LoadSessionData()
-    ApplyCameraSettings()
-    UnlockCameraMovement(nil, "unlock_all")
-end
-
--- Clear the cache when loading a new map to prevent jumping to old coordinates
-function OnMsg.NewMapLoaded()
-    cachedTactical = false
-    cachedOverview = false
-    ApplyCameraSettings()
-    UnlockCameraMovement(nil, "unlock_all")
+    return cdr_old_SetForceMaxZoom(force, ...)
 end
 
 -- Cache state and perform switch in a single message-driven flow
-local old_SetOverview = cameraTac.SetOverview
+local cdr_old_SetOverview = cameraTac.SetOverview
 function cameraTac.SetOverview(set, ...)
 
     -- Cache current state BEFORE switching
@@ -104,21 +117,21 @@ function cameraTac.SetOverview(set, ...)
 
     if cameraTac.GetIsInOverview() then
         cachedOverview = state
-        cachedZoomOverview = zoom
+        gv_CDR_ZoomOverview = zoom
     else
         cachedTactical = state
-        cachedZoomTactical = zoom
+        gv_CDR_ZoomTactical = zoom
     end
 
     -- Perform the actual mode switch (engine call)
-    local res = old_SetOverview(set, ...)
+    local res = cdr_old_SetOverview(set, ...)
 
     -- Trigger hr settings update for the new mode
     ApplyCameraSettings(set)
 
     -- Restore destination state AFTER switching
     local restore = set and cachedOverview or cachedTactical
-    local restoreZoom = set and cachedZoomOverview or cachedZoomTactical
+    local restoreZoom = set and gv_CDR_ZoomOverview or gv_CDR_ZoomTactical
 
     if restore then cameraTac.SetPosLookAtAndFloor(restore.pos, restore.lookAt, restore.floor, 0) end
     if restoreZoom then cameraTac.SetZoom(restoreZoom, 0) end
@@ -128,21 +141,30 @@ function cameraTac.SetOverview(set, ...)
     return res
 end
 
-local old_OnMouseWheelForward = IModeCommonUnitControl.OnMouseWheelForward
-function IModeCommonUnitControl:OnMouseWheelForward(...)
-    print(string.format("Zoom: %s - InOverview: %s", tostring(cameraTac.GetZoom()), tostring(cameraTac.GetIsInOverview())))
-    return old_OnMouseWheelForward(self, ...)
+-- Initializes attack state for a brand new campaign.
+function OnMsg.InitSessionCampaignObjects()
+    cachedTactical = false
+    cachedOverview = false
+    ApplyCameraSettings()
 end
 
-local old_OnMouseWheelBack = IModeCommonUnitControl.OnMouseWheelBack
-function IModeCommonUnitControl:OnMouseWheelBack(...)    
-    print(string.format("Zoom: %s - InOverview: %s", tostring(cameraTac.GetZoom()), tostring(cameraTac.GetIsInOverview())))
-    return old_OnMouseWheelBack(self, ...)
+-- Hook into messages to ensure settings are applied
+function OnMsg.LoadSessionData()
+    cachedTactical = false
+    cachedOverview = false
+    ApplyCameraSettings()
 end
 
--- Initial application
-ApplyCameraSettings()
-UnlockCameraMovement(nil, "unlock_all")
-cameraTac.SetForceMaxZoom(false)
+-- Clear the cache when loading a new map to prevent jumping to old coordinates
+function OnMsg.NewMapLoaded()
+    cachedTactical = false
+    cachedOverview = false
+    ApplyCameraSettings()
+end
 
-print("Camera Done Right mod loaded.")
+-- Re-apply settings when options are changed in the menu
+function OnMsg.ApplyModOptions(id)
+    if id == CurrentModId then
+        ApplyCameraSettings()
+    end
+end
