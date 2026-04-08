@@ -6,40 +6,45 @@
 GameVar("gv_CDR_ZoomTactical", false)
 GameVar("gv_CDR_ZoomOverview", false)
 
--- Local variables for camera state caching
-local cachedTactical = false
-local cachedOverview = false
+local cache_Tactical = false
+local cache_Overview = false
 
 local function ApplyCameraSettings(forced_overview)
     local options = CurrentModOptions
     if not options or not options.GetProperty then return end
 
-    local zoom_min = options:GetProperty("cdr_zoom_min") or 65
-    local zoom_max = options:GetProperty("cdr_zoom_max") or 200
+    local tactical_min = options:GetProperty("cdr_tacical_min") or 100
+    local tactical_max = options:GetProperty("cdr_tacical_max") or 1100
+    
+    local overview_min = options:GetProperty("cdr_overview_min") or 100
+    local overview_max = options:GetProperty("cdr_overview_max") or 1100
+
+    local zoom_min_tactical = (tactical_min * 220) / tactical_max
+    local zoom_min_overview = (overview_min * 220) / overview_max
+    local zoom_max = 220
     local zoom_step = options:GetProperty("cdr_zoom_step") or 15
-    local pitch_angle = options:GetProperty("cdr_pitch_angle") or 60
+
+    local pitch_angle = options:GetProperty("cdr_pitch_angle") or 55
 
     local is_overview = forced_overview
     if is_overview == nil then
         is_overview = cameraTac.GetIsInOverview()
     end
     
-    -- In overview, zoom limits are ignored by the engine's C++ input path.
-    -- The only way to move the 2200 plateau is to change the base Height.
     local settings = {
-        CameraTacMinZoom = 22, -- 5000 in overview to break the 2.0x height clamp
-        CameraTacMaxZoom = 220,
-        CameraTacZoomStep = 22,
+        CameraTacMinZoom = cameraTac.GetIsInOverview() and zoom_min_overview or zoom_min_tactical,
+        CameraTacMaxZoom = zoom_max,
+        CameraTacZoomStep = zoom_step,
         CameraTacClampToTerrain = true,
-        CameraTacHeight = not cameraTac.GetIsInOverview() and 1100 or 1100, -- 5000 in overview to break the 2.0x height clamp
+        CameraTacHeight = cameraTac.GetIsInOverview() and overview_max or tactical_max,
+        CameraTacLookAtAngle = pitch_angle * 60,
     }
-
-    --cameraTac.SetLookAtAngle(not cameraTac.GetIsInOverview() and hr.CameraTacLookAtAngle or hr.CameraTacLookAtAngleInOverview)
     
     -- Apply to hr table
     for k, v in pairs(settings) do
         hr[k] = v
     end
+
     UnlockCameraMovement(nil, "unlock_all")
     cameraTac.SetForceMaxZoom(false)
 end
@@ -75,25 +80,25 @@ function LockCameraMovement(reason)
 end
 
 
-local cdr_old_SnapCameraToObj = SnapCameraToObj
-function SnapCameraToObj(obj, mode, floor, time, easing)       
-    if g_AIExecutionController then
-        return
-    end
+-- local cdr_old_SnapCameraToObj = SnapCameraToObj
+-- function SnapCameraToObj(obj, mode, floor, time, easing)       
+--     if g_AIExecutionController then
+--         return
+--     end
         
-    local igiModeDlg = GetInGameInterfaceModeDlg()
-    if igiModeDlg then
-        local modeClass = igiModeDlg.class
-        if modeClass:find("Attack") or      
-           modeClass:find("Moving") or      
-           modeClass:find("Aim") or         
-           modeClass:find("AreaAim") then  
-            return
-         end
-     end
+--     local igiModeDlg = GetInGameInterfaceModeDlg()
+--     if igiModeDlg then
+--         local modeClass = igiModeDlg.class
+--         if modeClass:find("Attack") or      
+--            modeClass:find("Moving") or      
+--            modeClass:find("Aim") or         
+--            modeClass:find("AreaAim") then  
+--             return
+--          end
+--      end
         
-    return cdr_old_SnapCameraToObj(obj, mode, floor, time, easing)
-end
+--     return cdr_old_SnapCameraToObj(obj, mode, floor, time, easing)
+-- end
 
 -- Ensure cameraTac.SetForceMaxZoom doesn't lock zoom
 local cdr_old_SetForceMaxZoom = cameraTac.SetForceMaxZoom
@@ -116,10 +121,10 @@ function cameraTac.SetOverview(set, ...)
     local state = { pos = pos, lookAt = lookAt, floor = floor }
 
     if cameraTac.GetIsInOverview() then
-        cachedOverview = state
+        cache_Overview = state
         gv_CDR_ZoomOverview = zoom
     else
-        cachedTactical = state
+        cache_Tactical = state
         gv_CDR_ZoomTactical = zoom
     end
 
@@ -130,7 +135,7 @@ function cameraTac.SetOverview(set, ...)
     ApplyCameraSettings(set)
 
     -- Restore destination state AFTER switching
-    local restore = set and cachedOverview or cachedTactical
+    local restore = set and cache_Overview or cache_Tactical
     local restoreZoom = set and gv_CDR_ZoomOverview or gv_CDR_ZoomTactical
 
     if restore then cameraTac.SetPosLookAtAndFloor(restore.pos, restore.lookAt, restore.floor, 0) end
@@ -143,22 +148,22 @@ end
 
 -- Initializes attack state for a brand new campaign.
 function OnMsg.InitSessionCampaignObjects()
-    cachedTactical = false
-    cachedOverview = false
+    cache_Tactical = false
+    cache_Overview = false
     ApplyCameraSettings()
 end
 
 -- Hook into messages to ensure settings are applied
 function OnMsg.LoadSessionData()
-    cachedTactical = false
-    cachedOverview = false
+    cache_Tactical = false
+    cache_Overview = false
     ApplyCameraSettings()
 end
 
 -- Clear the cache when loading a new map to prevent jumping to old coordinates
 function OnMsg.NewMapLoaded()
-    cachedTactical = false
-    cachedOverview = false
+    cache_Tactical = false
+    cache_Overview = false
     ApplyCameraSettings()
 end
 
