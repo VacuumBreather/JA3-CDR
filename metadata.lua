@@ -1,8 +1,9 @@
 return PlaceObj('ModDef', {
 	'title', "Camera Done Right",
+	'last_changes', "Beta version",
 	'id', "Yb7PXyK",
 	'author', "KeldorKatarn",
-	'version', 5,
+	'version', 7,
 	'lua_revision', 233360,
 	'saved_with_revision', 366685,
 	'code', {
@@ -30,7 +31,11 @@ return PlaceObj('ModDef', {
 		cdr_toggle_SnapCameraPlayerActions = true,
 		cdr_zoom_step = 15,
 	},
-	'saved', 1775566740,
-	'code_hash', -6154304003920291721,
+	'saved', 1775650782,
+	'code_hash', -3608270687547524951,
 	'affected_resources', {},
+	'steam_id', "3702504040",
+	'TagGameSettings', true,
+	'TagOther', true,
+	'TagUI', true,
 })
