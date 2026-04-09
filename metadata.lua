@@ -6,7 +6,7 @@ return PlaceObj('ModDef', {
 	'id', "Yb7PXyK",
 	'author', "KeldorKatarn",
 	'version_major', 1,
-	'version', 10,
+	'version', 12,
 	'lua_revision', 233360,
 	'saved_with_revision', 366685,
 	'code', {
@@ -34,7 +34,7 @@ return PlaceObj('ModDef', {
 		cdr_toggle_SnapCameraPlayerActions = true,
 		cdr_zoom_step = "15",
 	},
-	'saved', 1775723798,
+	'saved', 1775724018,
 	'code_hash', -2282188204992386574,
 	'screenshot1', "Mod/Yb7PXyK/Images/screenshot1.jpg",
 	'screenshot2', "Mod/Yb7PXyK/Images/screenshot2.jpg",

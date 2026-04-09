@@ -1,22 +1,12 @@
-# The Legion Comes For You (Again)
+# Camera Done Right
 
-This is a complete remake of the classic *The Legion Comes For You* mod by **Sig**.
-
-It brings the same persistent threat to Jagged Alliance 3 with modernized logic and full compatibility with the game's story.
-
-This mod ensures that Grand Chien remains a dangerous place by sending random enemy patrols and specialized squads to hunt down your mercenaries wherever they are stationed.
+Take full control of your tactical and overview cameras! Camera Done Right unlocks zoom limits, prevents annoying camera snapping, and gives you a smoother combat experience with highly customizable settings.
 
 ## Key Features
 
-- **Dynamic Attacks:** Every hour, the mod checks if an enemy force will launch an assault. These can be coordinated strikes from nearby outposts or random wilderness ambushes by Legion, Adonis, or even local wildlife.
-- **Quest-Safe Logic:** Features over 50 safety checks to ensure random attacks never interrupt critical quest moments or unique NPC encounters (like Flay's hunt or the Fleatown ghost ambush).
-- **Progressive Scaling:** Enemies get tougher as you take more mines and progress through the story. During the endgame, expect elite Army and Adonis units to bring the fight to previously safe zones like Ernie Island.
-- **Customizable:** Use the Mod Options menu to adjust attack frequency, daily probabilities, and minimum cooldown days between assaults.
-
----
-
-*Don't let your guard down — the Legion is no longer waiting for you to find them.*
-
----
-
-Based on the original mod by **Sig**. Remade with permission.
+- **Unlocked Zoom:** Set your own min/max zoom heights for both Tactical and Overview modes.
+- **No More Camera Snapping:** Disable automatic camera jumps during enemy turns or player actions (aiming, moving, attacking).
+- **Combat Smoothness:** Disable cinematic kill-cams and tactical zooms that interrupt your view of the battlefield.
+- **Free Movement:** Move and rotate your camera freely even when the game tries to lock it during combat.
+- **Mode Memory:** Automatically remembers and restores your camera position and zoom level when switching between Tactical and Overview modes.
+- **Fully Customizable:** Tweak pitch angles, zoom steps, and more via the Mod Options menu.
