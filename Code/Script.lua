@@ -13,18 +13,18 @@ local function ApplyCameraSettings(forced_overview)
     local options = CurrentModOptions
     if not options or not options.GetProperty then return end
 
-    local tactical_min = options:GetProperty("cdr_tactical_min") or 100
-    local tactical_max = options:GetProperty("cdr_tactical_max") or 1100
+    local tactical_min = tonumber(options:GetProperty("cdr_tactical_min")) or 100
+    local tactical_max = tonumber(options:GetProperty("cdr_tactical_max")) or 1100
     
-    local overview_min = options:GetProperty("cdr_overview_min") or 100
-    local overview_max = options:GetProperty("cdr_overview_max") or 1100
+    local overview_min = tonumber(options:GetProperty("cdr_overview_min")) or 100
+    local overview_max = tonumber(options:GetProperty("cdr_overview_max")) or 1100
 
     local zoom_min_tactical = (tactical_min * 220) / tactical_max
     local zoom_min_overview = (overview_min * 220) / overview_max
     local zoom_max = 220
-    local zoom_step = options:GetProperty("cdr_zoom_step") or 15
+    local zoom_step = tonumber(options:GetProperty("cdr_zoom_step")) or 15
 
-    local pitch_angle = options:GetProperty("cdr_pitch_angle") or 55
+    local pitch_angle = tonumber(options:GetProperty("cdr_pitch_angle")) or 55
 
     local is_overview = forced_overview
     if is_overview == nil then

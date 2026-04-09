@@ -1,51 +1,39 @@
 return {
-	PlaceObj('ModItemOptionNumber', {
+	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_tactical_min",
 		'DisplayName', "Min Zoom Height (Tactical)",
-		'DefaultValue', 100,
-		'MinValue', 10,
-		'MaxValue', 1000,
-		'StepSize', 10,
+		'DefaultValue', "100",
+		'ChoiceList', {"10", "20", "50", "100", "150", "200", "300", "400", "500", "600", "700", "800", "900", "1000"},
 	}),
-	PlaceObj('ModItemOptionNumber', {
+	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_tactical_max",
 		'DisplayName', "Max Zoom Height (Tactical)",
-		'DefaultValue', 1100,
-		'MinValue', 1000,
-		'MaxValue', 3000,
-		'StepSize', 250,
+		'DefaultValue', "1100",
+		'ChoiceList', {"1000", "1100", "1250", "1500", "1750", "2000", "2250", "2500", "2750", "3000"},
 	}),
-	PlaceObj('ModItemOptionNumber', {
+	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_overview_min",
 		'DisplayName', "Min Zoom Height (Overview)",
-		'DefaultValue', 100,
-		'MinValue', 10,
-		'MaxValue', 1000,
-		'StepSize', 10,
+		'DefaultValue', "100",
+		'ChoiceList', {"10", "20", "50", "100", "150", "200", "300", "400", "500", "600", "700", "800", "900", "1000"},
 	}),
-	PlaceObj('ModItemOptionNumber', {
+	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_overview_max",
 		'DisplayName', "Max Zoom Height (Overview)",
-		'DefaultValue', 1100,
-		'MinValue', 1000,
-		'MaxValue', 5000,
-		'StepSize', 250,
+		'DefaultValue', "1100",
+		'ChoiceList', {"1000", "1100", "1250", "1500", "1750", "2000", "2250", "2500", "2750", "3000", "3500", "4000", "4500", "5000"},
 	}),
-	PlaceObj('ModItemOptionNumber', {
+	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_zoom_step",
 		'DisplayName', "Zoom Step",
-		'DefaultValue', 15,
-		'MinValue', 5,
-		'MaxValue', 50,
-		'StepSize', 5,
+		'DefaultValue', "15",
+		'ChoiceList', {"5", "10", "15", "20", "25", "30", "35", "40", "45", "50"},
 	}),
-	PlaceObj('ModItemOptionNumber', {
+	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_pitch_angle",
 		'DisplayName', "Pitch Angle",
-		'DefaultValue', 60,
-		'MinValue', 45,
-		'MaxValue', 75,
-		'StepSize', 5,
+		'DefaultValue', "60",
+		'ChoiceList', {"45", "50", "55", "60", "65", "70", "75"},
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_AdjustCombatCamera",
