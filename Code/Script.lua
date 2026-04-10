@@ -249,8 +249,7 @@ function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_ro
 				fp_cam = GetFPCameraFromPreset(attacker, target, preset, no_rotate)
 			else
 				GetACamsForPreset(attacker, target, preset, cam_positioning, no_rotate, output)
-				
-				CombatLog("important", "IsAiming: " .. tostring(cdr_isAiming))
+
 				if not cdr_isAiming then
 					GetACamsForPreset(target, attacker, preset, cam_positioning, no_rotate, output)
 				end
@@ -375,6 +374,17 @@ function LockCameraMovement(reason, ...)
     return cdr_old_LockCameraMovement(reason, ...)
 end
 
+local cdr_old_ExecFirearmAttacks = Unit.ExecFirearmAttacks
+function Unit:ExecFirearmAttacks(...)
+	self:PushDestructor(function(self)
+		if ActionCameraPlaying then
+			Msg("ActionCameraWaitSignalEnd")
+		end
+	end)
+	local res = cdr_old_ExecFirearmAttacks(self, ...)
+	self:PopAndCallDestructor()
+	return res
+end
 
 local cdr_old_SnapCameraToObj = SnapCameraToObj
 function SnapCameraToObj(obj, mode, floor, time, easing, ...)
