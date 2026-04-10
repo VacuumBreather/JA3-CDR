@@ -24,4 +24,5 @@
 548200002023,Default
 548200002024,Never
 548200002025,Always for Player
-548200002026,Always for Player and AI
+548200002026,Always for Player and AI548200002027,Action Camera Blur (DOF)
+548200002028,Scales the strength of the background blur (Depth of Field) during cinematic shots. Lower values make it softer.

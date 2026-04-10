@@ -250,7 +250,7 @@ function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_ro
 				fp_cam = GetFPCameraFromPreset(attacker, target, preset, no_rotate)
 			else
 				GetACamsForPreset(attacker, target, preset, cam_positioning, no_rotate, output)
-				
+
 				if not cdr_isAiming then
 					GetACamsForPreset(target, attacker, preset, cam_positioning, no_rotate, output)
 				end
@@ -381,7 +381,7 @@ function Unit:ExecFirearmAttacks(...)
 	self:PushDestructor(function(self)
 		if ActionCameraPlaying then
 			-- Capture the current camera session to avoid race conditions.
-			-- This ensures that a delayed signal from this attack won't 
+			-- This ensures that a delayed signal from this attack won't
 			-- accidentally close a new camera from a subsequent attack.
 			local session = CurrentActionCamera
 			CreateGameTimeThread(function()
@@ -496,4 +496,25 @@ function OnMsg.ApplyModOptions(id)
     if id == CurrentModId then
         ApplyCameraSettings()
     end
+end
+
+local cdr_old_ActionCameraDef_SetDOFParams = ActionCameraDef.SetDOFParams
+function ActionCameraDef:SetDOFParams(...)
+	local options = CurrentModOptions
+	local strength = options and tonumber(options:GetProperty("cdr_dof_strength")) or 100
+
+	if strength < 100 then
+		local old_near = self.DOFStrengthNear
+		local old_far = self.DOFStrengthFar
+
+		self.DOFStrengthNear = MulDivRound(old_near, strength, 100)
+		self.DOFStrengthFar = MulDivRound(old_far, strength, 100)
+
+		cdr_old_ActionCameraDef_SetDOFParams(self, ...)
+
+		self.DOFStrengthNear = old_near
+		self.DOFStrengthFar = old_far
+	else
+		return cdr_old_ActionCameraDef_SetDOFParams(self, ...)
+	end
 end
