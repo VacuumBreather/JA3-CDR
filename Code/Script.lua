@@ -191,14 +191,13 @@ function CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate
     local playerUnit = (IsKindOf(target, "Unit") and target:IsLocalPlayerTeam() and target) or (attacker:IsLocalPlayerTeam() and attacker)
 
     if not playerUnit and ShouldForceCinematic(attacker) then
-        no_rotate = false
 
         if InteractionRand(100, "CDR_ActionCamera") < 50 then
             attacker, target = target, attacker
         end
     end
 
-    return cdr_old_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate)
+    return cdr_old_CalcActionCamera(attacker, target, cam_positioning, force_fp, false)
 end
 
 local cdr_old_IsCinematicTargeting = IsCinematicTargeting
