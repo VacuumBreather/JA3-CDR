@@ -1,8 +1,3 @@
-local mode_Default = "Default"
-local mode_Never = "Never"
-local mode_AlwaysPlayer = "Always for Player"
-local mode_AlwaysAI = "Always for Player and AI"
-
 return {
 	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_tactical_min",
@@ -125,12 +120,12 @@ return {
 		'name', "cdr_CinematicCameraMode",
 		'DisplayName', T(548200002009, "Cinematic Kill-Cams Mode"),
 		'Help', T(548200002010, "Controls when the close-up cinematic shots (kill-cams) trigger."),
-		'DefaultValue', mode_Default,
+		'DefaultValue', "Default",
 		'ChoiceList', {
-			mode_Default,
-			mode_Never,
-			mode_AlwaysPlayer,
-			mode_AlwaysAI,
+			"Default",
+			"Never",
+			"Always for Player",
+			"Always for Player and AI",
 		},
 	}),
 	PlaceObj('ModItemOptionToggle', {
