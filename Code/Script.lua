@@ -9,9 +9,26 @@ GameVar("gv_CDR_ZoomOverview", false)
 local cache_Tactical = false
 local cache_Overview = false
 
+local mode_Default = "Default"
+local mode_Never = "Never"
+local mode_AlwaysPlayer = "Always for Player"
+local mode_AlwaysAI = "Always for Player and AI"
+
 local function ApplyCameraSettings(forced_overview)
     local options = CurrentModOptions
     if not options or not options.GetProperty then return end
+
+	-- Migrate old boolean option if present
+	local old_toggle = rawget(options, "cdr_toggle_CinematicCamera")
+	if old_toggle ~= nil then
+		local current_mode = options:GetProperty("cdr_CinematicCameraMode")
+		if current_mode == mode_Default then
+			local new_mode = old_toggle and mode_Never or mode_Default
+			options:SetProperty("cdr_CinematicCameraMode", new_mode)
+		end
+		-- Clear the old property from raw table so we don't migrate again
+		rawset(options, "cdr_toggle_CinematicCamera", nil)
+	end
 
     local tactical_min = tonumber(options:GetProperty("cdr_tactical_min")) or 100
     local tactical_max = tonumber(options:GetProperty("cdr_tactical_max")) or 1100
@@ -96,10 +113,6 @@ function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, f
     end
     return cdr_old_CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly, ...)
 end
-
-local mode_Never = "Never"
-local mode_AlwaysPlayer = "Always for Player"
-local mode_AlwaysAI = "Always for Player and AI"
 
 local cdr_old_SetActionCameraDirect = SetActionCameraDirect
 function SetActionCameraDirect(...)
