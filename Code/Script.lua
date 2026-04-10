@@ -134,15 +134,6 @@ function SetActionCamera(...)
 	return cdr_old_SetActionCamera(...)
 end
 
-local cdr_old_CalcActionCamera = CalcActionCamera
-function CalcActionCamera(...)
-	local options = CurrentModOptions
-	local mode = options and options:GetProperty("cdr_CinematicCameraMode")
-	if mode == mode_Never then
-		return false, false, false, true
-	end
-	return cdr_old_CalcActionCamera(...)
-end
 
 local function ShouldForceCinematic(attacker)
 	local options = CurrentModOptions
@@ -168,10 +159,46 @@ function IsCinematicAttack(attacker, results, attack_args, action, ...)
 	if not g_Combat then 
 		return false, false 
 	end
-	if ShouldForceCinematic(attacker) then
-		return "forced", true
+	
+	local cinematicAttack, interpolation = cdr_old_IsCinematicAttack(attacker, results, attack_args, action, ...)
+	local forced = ShouldForceCinematic(attacker)
+	
+	if (cinematicAttack or forced) and IsKindOf(attack_args.target, "Unit") then
+		local target = attack_args.target
+		local playerUnit = (target:IsLocalPlayerTeam() and target) or (attacker:IsLocalPlayerTeam() and attacker)
+		
+		-- If no player unit is involved, vanilla ExecFirearmAttacks will skip the camera.
+		-- We trigger it here manually and return false to prevent redundant/broken calls.
+		if not playerUnit then
+			SetAutoRemoveActionCamera(attacker, target, false, false, false, (interpolation or true) and (default_interpolation_time or 700))
+			return false, false
+		end
+		
+		return cinematicAttack or "forced", interpolation or true
 	end
-	return cdr_old_IsCinematicAttack(attacker, results, attack_args, action, ...)
+	
+	return cinematicAttack, interpolation
+end
+
+local cdr_old_CalcActionCamera = CalcActionCamera
+function CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate)
+	local options = CurrentModOptions
+	local mode = options and options:GetProperty("cdr_CinematicCameraMode")
+	if mode == mode_Never then
+		return false, false, false, true
+	end
+
+    local playerUnit = (IsKindOf(target, "Unit") and target:IsLocalPlayerTeam() and target) or (attacker:IsLocalPlayerTeam() and attacker)
+
+    if not playerUnit and ShouldForceCinematic(attacker) then
+        no_rotate = false
+
+        if InteractionRand(100, "CDR_ActionCamera") < 50 then
+            attacker, target = target, attacker
+        end
+    end
+
+    return cdr_old_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate)
 end
 
 local cdr_old_IsCinematicTargeting = IsCinematicTargeting
