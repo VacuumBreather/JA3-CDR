@@ -32,7 +32,7 @@ local function ApplyCameraSettings(forced_overview)
 
     local tactical_min = tonumber(options:GetProperty("cdr_tactical_min")) or 100
     local tactical_max = tonumber(options:GetProperty("cdr_tactical_max")) or 1100
-    
+
     local overview_min = tonumber(options:GetProperty("cdr_overview_min")) or 100
     local overview_max = tonumber(options:GetProperty("cdr_overview_max")) or 1100
 
@@ -47,7 +47,7 @@ local function ApplyCameraSettings(forced_overview)
     if is_overview == nil then
         is_overview = cameraTac.GetIsInOverview()
     end
-    
+
     local settings = {
         CameraTacMinZoom = cameraTac.GetIsInOverview() and zoom_min_overview or zoom_min_tactical,
         CameraTacMaxZoom = zoom_max,
@@ -56,7 +56,7 @@ local function ApplyCameraSettings(forced_overview)
         CameraTacHeight = cameraTac.GetIsInOverview() and overview_max or tactical_max,
         CameraTacLookAtAngle = pitch_angle * 60,
     }
-    
+
     -- Apply to hr table
     for k, v in pairs(settings) do
         hr[k] = v
@@ -156,48 +156,199 @@ end
 
 local cdr_old_IsCinematicAttack = IsCinematicAttack
 function IsCinematicAttack(attacker, results, attack_args, action, ...)
-	if not g_Combat then 
-		return false, false 
+	if not g_Combat then
+		return false, false
 	end
-	
-	local cinematicAttack, interpolation = cdr_old_IsCinematicAttack(attacker, results, attack_args, action, ...)
-	local forced = ShouldForceCinematic(attacker)
-	
-	if (cinematicAttack or forced) and IsKindOf(attack_args.target, "Unit") then
-		local target = attack_args.target
-		local playerUnit = (target:IsLocalPlayerTeam() and target) or (attacker:IsLocalPlayerTeam() and attacker)
-		
-		-- If no player unit is involved, vanilla ExecFirearmAttacks will skip the camera.
-		-- We trigger it here manually and return false to prevent redundant/broken calls.
-		if not playerUnit then
-			SetAutoRemoveActionCamera(attacker, target, false, false, false, (interpolation or true) and (default_interpolation_time or 700))
-			return false, false
-		end
-		
-		return cinematicAttack or "forced", interpolation or true
+
+	if ShouldForceCinematic(attacker) then
+        if attacker:IsLocalPlayerTeam() then
+		    return "forced", true
+        else
+            if IsKindOf(attack_args.target, "Unit") then
+                local target = attack_args.target
+
+                if target:IsLocalPlayerTeam() then
+		            return "forced", true
+                end
+
+                -- If no player unit is involved, vanilla ExecFirearmAttacks will skip the camera.
+                -- We trigger it here manually and return false to prevent redundant/broken calls.
+                SetAutoRemoveActionCamera(attacker, target, false, false, false, (interpolation or true) and (default_interpolation_time or 700))
+                return false, false
+            end
+
+		    return "forced", true
+        end
 	end
-	
-	return cinematicAttack, interpolation
+
+    return cdr_old_IsCinematicAttack(attacker, results, attack_args, action, ...)
 end
 
 local cdr_old_CalcActionCamera = CalcActionCamera
 function CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate)
 	local options = CurrentModOptions
 	local mode = options and options:GetProperty("cdr_CinematicCameraMode")
+
 	if mode == mode_Never then
 		return false, false, false, true
 	end
 
-    local playerUnit = (IsKindOf(target, "Unit") and target:IsLocalPlayerTeam() and target) or (attacker:IsLocalPlayerTeam() and attacker)
+    return cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, false)
+end
 
-    if not playerUnit and ShouldForceCinematic(attacker) then
+local hide_nearby_objs = {"Shrub", "SlabWallObject"}
 
-        if InteractionRand(100, "CDR_ActionCamera") < 50 then
-            attacker, target = target, attacker
-        end
-    end
+local function cdr_lIsActionCameraHideableObject(cam_pos, o)
+	if IsKindOf(o, "SlabWallObject") then
+		if o:IsDoor() or not ActionCameraShouldHideWindow(cam_pos, o) then
+			return false
+		end
+	end
 
-    return cdr_old_CalcActionCamera(attacker, target, cam_positioning, force_fp, false)
+	return IsKindOfClasses(o, hide_nearby_objs)
+end
+
+function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate)
+	no_rotate = no_rotate or false
+	local fp_cam
+
+	if force_fp then
+		fp_cam = GetFPCameraFromPreset(attacker, target, Presets.ActionCameraDef.Default.FirstPerson_Cam)
+		return fp_cam[1], fp_cam[2], fp_cam[3]
+	end
+
+	local valid_cameras, all_cameras = {}, {}
+	local output = {
+		sources = {},
+		dests = {}, --target pt
+		targets = {}, --target obj
+		cameras = {},
+		test_to_cam = {},
+	}
+
+	local sources = output.sources
+	local dests = output.dests
+	local test_to_cam = output.test_to_cam
+	local targets = output.targets
+	local cameras = output.cameras
+	local stance = attacker.stance
+
+	if #(stance or "") == 0 then
+		stance = "Crouch" -- attacker.species ~= "Human"
+	end
+
+	for _, preset in ipairs(Presets.ActionCameraDef.Default) do
+		local isHigherCam = preset.id == "Z_HigherCamera"
+		assert(preset:HasMember(stance), "Invalid stance in ActionCameraDef properties")
+
+		if preset[stance] and not preset.SetPieceOnly and not isHigherCam then
+			if preset.id == "FirstPerson_Cam" then
+				fp_cam = GetFPCameraFromPreset(attacker, target, preset, no_rotate)
+			else
+				GetACamsForPreset(attacker, target, preset, cam_positioning, no_rotate, output)
+                GetACamsForPreset(target, attacker, preset, cam_positioning, no_rotate, output)
+			end
+		end
+	end
+
+	if #sources > 0 then
+		ACVisibilityBatchTest(sources, dests,
+			function(obj, idx, pos, dist)
+				local src = sources[idx]
+
+				if VisionCollisionFilter(obj) and not cdr_lIsActionCameraHideableObject(src, obj) and obj ~= target then
+					local cam = test_to_cam[idx]
+					local obstacles = cam[4]
+					obstacles[#obstacles + 1] = obj
+					obstacles.min_dist = Min(obstacles.min_dist, dist)
+
+					if targets[idx] == target then
+						obstacles.target_visible = false
+					end
+				end
+			end)
+
+		for i, cam in ipairs(cameras) do
+			if cam[3].id ~= "Z_HigherCamera" then
+				local obstacles = cam[4]
+
+				if #obstacles <= 0 then
+					--test for units blocking view
+					local j = cam.begin_idx + 1
+					while test_to_cam[j] == cam do
+						local s, d = sources[j], dests[j]
+						local min = point(Min(s:x(), d:x()), Min(s:y(), d:y()), Min(s:z(), d:z())) - buffer
+						local max = point(Max(s:x(), d:x()), Max(s:y(), d:y()), Max(s:z(), d:z())) + buffer
+						local b = box(min, max)
+						MapForEach(b, "Unit", function(unit)
+							if unit ~= target and unit ~= attacker and ClipSegmentWithBox3D(sources[j], dests[j], unit) then
+								obstacles[#obstacles + 1] = unit
+								obstacles.target_visible = false
+
+								return "break"
+							end
+						end)
+
+						if not obstacles.target_visible then
+							break
+						end
+
+						j = j + 1
+					end
+
+					if #obstacles <= 0 then
+						valid_cameras[#valid_cameras + 1] = cam
+					end
+				end
+			end
+		end
+	end
+
+	all_cameras = cameras
+
+	if next(valid_cameras) then
+		local seed = xxhash(IsPoint(attacker) and attacker or attacker:GetPos(), GetActionCameraTargetPos(target))
+		local rand = BraidRandom(seed, #valid_cameras)
+		local camera = valid_cameras[1 + rand]
+
+		return camera[1], camera[2], camera[3]
+	end
+
+	local tie
+	local best_match
+
+	for i = 1, #all_cameras do
+		local cam = all_cameras[i]
+		if cam[4].target_visible then
+			if not best_match then
+				best_match = cam
+			elseif #cam[4] < #best_match[4] then
+				best_match = cam
+			elseif #cam[4] == #best_match[4] then
+				tie = #cam[4]
+			end
+		end
+	end
+
+	if tie then
+		for i = 1, #all_cameras do
+			local cam = all_cameras[i]
+			local col_cam = cam[4]
+			if #col_cam == tie then
+				local col_best_match = best_match[4]
+				if col_cam.min_dist > col_best_match.min_dist then
+					best_match = cam
+				end
+			end
+		end
+	end
+
+    assert(fp_cam)
+
+    local fallback = not best_match
+	best_match = best_match or fp_cam
+
+	return best_match[1], best_match[2], best_match[3], fallback
 end
 
 local cdr_old_IsCinematicTargeting = IsCinematicTargeting
@@ -226,15 +377,15 @@ function SnapCameraToObj(obj, mode, floor, time, easing, ...)
         if options:GetProperty("cdr_toggle_SnapCameraEnemyTurn") and g_AIExecutionController then
             return
         end
-        
+
         if options:GetProperty("cdr_toggle_SnapCameraPlayerActions") then
             local igiModeDlg = GetInGameInterfaceModeDlg()
             if igiModeDlg then
                 local modeClass = igiModeDlg.class
-                if modeClass:find("Attack") or      
-                   modeClass:find("Moving") or      
-                   modeClass:find("Aim") or         
-                   modeClass:find("AreaAim") then  
+                if modeClass:find("Attack") or
+                   modeClass:find("Moving") or
+                   modeClass:find("Aim") or
+                   modeClass:find("AreaAim") then
                     return
                  end
              end
