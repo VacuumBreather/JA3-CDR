@@ -205,9 +205,10 @@ end
 local cdr_isAiming = false
 local cdr_old_SetActionCameraNoFallback = SetActionCameraNoFallback
 function SetActionCameraNoFallback(...)
+	local old_isAiming = cdr_isAiming
 	cdr_isAiming = true
 	local res = cdr_old_SetActionCameraNoFallback(...)
-	cdr_isAiming = false
+	cdr_isAiming = old_isAiming
 	return res
 end
 
@@ -249,7 +250,7 @@ function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_ro
 				fp_cam = GetFPCameraFromPreset(attacker, target, preset, no_rotate)
 			else
 				GetACamsForPreset(attacker, target, preset, cam_positioning, no_rotate, output)
-
+				
 				if not cdr_isAiming then
 					GetACamsForPreset(target, attacker, preset, cam_positioning, no_rotate, output)
 				end
@@ -374,11 +375,21 @@ function LockCameraMovement(reason, ...)
     return cdr_old_LockCameraMovement(reason, ...)
 end
 
+
 local cdr_old_ExecFirearmAttacks = Unit.ExecFirearmAttacks
 function Unit:ExecFirearmAttacks(...)
 	self:PushDestructor(function(self)
 		if ActionCameraPlaying then
-			Msg("ActionCameraWaitSignalEnd")
+			-- Capture the current camera session to avoid race conditions.
+			-- This ensures that a delayed signal from this attack won't 
+			-- accidentally close a new camera from a subsequent attack.
+			local session = CurrentActionCamera
+			CreateGameTimeThread(function()
+				Sleep(1000)
+				if CurrentActionCamera == session then
+					Msg("ActionCameraWaitSignalEnd")
+				end
+			end)
 		end
 	end)
 	local res = cdr_old_ExecFirearmAttacks(self, ...)
