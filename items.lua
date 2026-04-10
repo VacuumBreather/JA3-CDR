@@ -1,7 +1,12 @@
+local mode_Default = "Default"
+local mode_Never = "Never"
+local mode_AlwaysPlayer = "Always for Player"
+local mode_AlwaysAI = "Always for Player and AI"
+
 return {
 	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_tactical_min",
-		'DisplayName', "Min Zoom Height (Tactical)",
+		'DisplayName', T(548200002001, "Min Zoom Height (Tactical)"),
 		'DefaultValue', "100",
 		'ChoiceList', {
 			"10",
@@ -22,7 +27,7 @@ return {
 	}),
 	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_tactical_max",
-		'DisplayName', "Max Zoom Height (Tactical)",
+		'DisplayName', T(548200002002, "Max Zoom Height (Tactical)"),
 		'DefaultValue', "1100",
 		'ChoiceList', {
 			"1000",
@@ -39,7 +44,7 @@ return {
 	}),
 	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_overview_min",
-		'DisplayName', "Min Zoom Height (Overview)",
+		'DisplayName', T(548200002003, "Min Zoom Height (Overview)"),
 		'DefaultValue', "100",
 		'ChoiceList', {
 			"10",
@@ -60,7 +65,7 @@ return {
 	}),
 	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_overview_max",
-		'DisplayName', "Max Zoom Height (Overview)",
+		'DisplayName', T(548200002004, "Max Zoom Height (Overview)"),
 		'DefaultValue', "1100",
 		'ChoiceList', {
 			"1000",
@@ -81,7 +86,7 @@ return {
 	}),
 	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_zoom_step",
-		'DisplayName', "Zoom Step",
+		'DisplayName', T(548200002005, "Zoom Step"),
 		'DefaultValue', "15",
 		'ChoiceList', {
 			"5",
@@ -98,7 +103,7 @@ return {
 	}),
 	PlaceObj('ModItemOptionChoice', {
 		'name', "cdr_pitch_angle",
-		'DisplayName', "Pitch Angle",
+		'DisplayName', T(548200002006, "Pitch Angle"),
 		'DefaultValue', "60",
 		'ChoiceList', {
 			"45",
@@ -112,50 +117,56 @@ return {
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_AdjustCombatCamera",
-		'DisplayName', "Maintain Custom Zoom During Combat",
-		'Help', "Prevents the game from overriding custom zoom levels and camera settings during the enemy turn.",
+		'DisplayName', T(548200002007, "Maintain Custom Zoom During Combat"),
+		'Help', T(548200002008, "Prevents the game from overriding custom zoom levels and camera settings during the enemy turn."),
 		'DefaultValue', true,
 	}),
-	PlaceObj('ModItemOptionToggle', {
-		'name', "cdr_toggle_CinematicCamera",
-		'DisplayName', "Disable Cinematic Kill-Cams",
-		'Help', "Specifically disables close-up cinematic shots (kill-cams) during attacks.",
-		'DefaultValue', true,
+	PlaceObj('ModItemOptionChoice', {
+		'name', "cdr_CinematicCameraMode",
+		'DisplayName', T(548200002009, "Cinematic Kill-Cams Mode"),
+		'Help', T(548200002010, "Controls when the close-up cinematic shots (kill-cams) trigger."),
+		'DefaultValue', mode_Default,
+		'ChoiceList', {
+			mode_Default,
+			mode_Never,
+			mode_AlwaysPlayer,
+			mode_AlwaysAI,
+		},
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_CombatCamera",
-		'DisplayName', "Disable Tactical Zoom during Attacks",
-		'Help', "Prevents the tactical camera from zooming in and following attacker/target during combat actions.",
+		'DisplayName', T(548200002011, "Disable Tactical Zoom during Attacks"),
+		'Help', T(548200002012, "Prevents the tactical camera from zooming in and following attacker/target during combat actions."),
 		'DefaultValue', true,
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_LockCameraMovement",
-		'DisplayName', "Free Camera Movement in Combat",
-		'Help', "Allows you to move and rotate the camera freely during combat, even when the game tries to lock it.",
+		'DisplayName', T(548200002013, "Free Camera Movement in Combat"),
+		'Help', T(548200002014, "Allows you to move and rotate the camera freely during combat, even when the game tries to lock it."),
 		'DefaultValue', true,
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_SetForceMaxZoom",
-		'DisplayName', "Allow Zooming During Actions",
-		'Help', "Prevents the game from forcing a specific zoom level during certain actions.",
+		'DisplayName', T(548200002015, "Allow Zooming During Actions"),
+		'Help', T(548200002016, "Prevents the game from forcing a specific zoom level during certain actions."),
 		'DefaultValue', true,
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_SetOverview",
-		'DisplayName', "Remember Zoom/Pos Between Modes",
-		'Help', "Caches and restores camera position and zoom when switching between Tactical and Overview modes.",
+		'DisplayName', T(548200002017, "Remember Zoom/Pos Between Modes"),
+		'Help', T(548200002018, "Caches and restores camera position and zoom when switching between Tactical and Overview modes."),
 		'DefaultValue', true,
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_SnapCameraEnemyTurn",
-		'DisplayName', "Disable Camera Snapping (Enemy Turn)",
-		'Help', "Prevents the camera from automatically jumping to enemies when they move or act during their turn.",
+		'DisplayName', T(548200002019, "Disable Camera Snapping (Enemy Turn)"),
+		'Help', T(548200002020, "Prevents the camera from automatically jumping to enemies when they move or act during their turn."),
 		'DefaultValue', true,
 	}),
 	PlaceObj('ModItemOptionToggle', {
 		'name', "cdr_toggle_SnapCameraPlayerActions",
-		'DisplayName', "Disable Camera Snapping (Player Actions)",
-		'Help', "Prevents the camera from jumping while you are aiming, moving, or preparing attacks.",
+		'DisplayName', T(548200002021, "Disable Camera Snapping (Player Actions)"),
+		'Help', T(548200002022, "Prevents the camera from jumping while you are aiming, moving, or preparing attacks."),
 		'DefaultValue', true,
 	}),
 	PlaceObj('ModItemCode', {

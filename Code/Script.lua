@@ -97,31 +97,73 @@ function CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, f
     return cdr_old_CombatCam_ShowAttackNew(attacker, target, willBeinterrupted, results, freezeCamPos, changeFloorOnly, ...)
 end
 
+local mode_Never = "Never"
+local mode_AlwaysPlayer = "Always for Player"
+local mode_AlwaysAI = "Always for Player and AI"
+
 local cdr_old_SetActionCameraDirect = SetActionCameraDirect
 function SetActionCameraDirect(...)
-    local options = CurrentModOptions
-    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
-        return
-    end
-    return cdr_old_SetActionCameraDirect(...)
+	local options = CurrentModOptions
+	local mode = options and options:GetProperty("cdr_CinematicCameraMode")
+	if mode == mode_Never then
+		return
+	end
+	return cdr_old_SetActionCameraDirect(...)
 end
 
 local cdr_old_SetActionCamera = SetActionCamera
 function SetActionCamera(...)
-    local options = CurrentModOptions
-    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
-        return
-    end
-    return cdr_old_SetActionCamera(...)
+	local options = CurrentModOptions
+	local mode = options and options:GetProperty("cdr_CinematicCameraMode")
+	if mode == mode_Never then
+		return
+	end
+	return cdr_old_SetActionCamera(...)
 end
 
 local cdr_old_CalcActionCamera = CalcActionCamera
 function CalcActionCamera(...)
-    local options = CurrentModOptions
-    if options and options:GetProperty("cdr_toggle_CinematicCamera") then
-        return false, false, false, true
-    end
-    return cdr_old_CalcActionCamera(...)
+	local options = CurrentModOptions
+	local mode = options and options:GetProperty("cdr_CinematicCameraMode")
+	if mode == mode_Never then
+		return false, false, false, true
+	end
+	return cdr_old_CalcActionCamera(...)
+end
+
+local function ShouldForceCinematic(attacker)
+	local options = CurrentModOptions
+	local mode = options and options:GetProperty("cdr_CinematicCameraMode")
+	if mode == mode_AlwaysAI then
+		return true
+	elseif mode == mode_AlwaysPlayer then
+		return attacker and attacker:IsLocalPlayerTeam()
+	end
+	return false
+end
+
+local cdr_old_IsEnemyKillCinematic = IsEnemyKillCinematic
+function IsEnemyKillCinematic(attacker, results, attack_args, ...)
+	if ShouldForceCinematic(attacker) then
+		return "forced", false
+	end
+	return cdr_old_IsEnemyKillCinematic(attacker, results, attack_args, ...)
+end
+
+local cdr_old_IsCinematicAttack = IsCinematicAttack
+function IsCinematicAttack(attacker, results, attack_args, action, ...)
+	if ShouldForceCinematic(attacker) then
+		return "forced", true
+	end
+	return cdr_old_IsCinematicAttack(attacker, results, attack_args, action, ...)
+end
+
+local cdr_old_IsCinematicTargeting = IsCinematicTargeting
+function IsCinematicTargeting(attacker, target, action, ...)
+	if ShouldForceCinematic(attacker) then
+		return true
+	end
+	return cdr_old_IsCinematicTargeting(attacker, target, action, ...)
 end
 
 local cdr_old_LockCameraMovement = LockCameraMovement
