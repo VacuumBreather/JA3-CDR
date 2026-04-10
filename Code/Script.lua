@@ -197,6 +197,7 @@ function CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate
 end
 
 local hide_nearby_objs = {"Shrub", "SlabWallObject"}
+local buffer = point(guim, guim, guim)
 
 local function cdr_lIsActionCameraHideableObject(cam_pos, o)
 	if IsKindOf(o, "SlabWallObject") then
