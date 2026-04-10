@@ -161,24 +161,17 @@ function IsCinematicAttack(attacker, results, attack_args, action, ...)
 	end
 
 	if ShouldForceCinematic(attacker) then
-        if attacker:IsLocalPlayerTeam() then
-		    return "forced", true
-        else
-            if IsKindOf(attack_args.target, "Unit") then
-                local target = attack_args.target
-
-                if target:IsLocalPlayerTeam() then
-		            return "forced", true
-                end
-
-                -- If no player unit is involved, vanilla ExecFirearmAttacks will skip the camera.
-                -- We trigger it here manually and return false to prevent redundant/broken calls.
-                SetAutoRemoveActionCamera(attacker, target, false, false, 0, 0)
-                return false, false
-            end
-
-		    return "forced", true
-        end
+		if attacker:IsLocalPlayerTeam() then
+			return "forced", true
+		else
+			local target = attack_args.target
+			if IsKindOf(target, "Unit") and target:IsLocalPlayerTeam() then
+				return "forced", true
+			end
+			-- For AI on AI, trigger it manually here and return false to avoid vanilla skipping it
+			SetAutoRemoveActionCamera(attacker, target, false, false, 0, 0)
+			return false, false
+		end
 	end
 
     return cdr_old_IsCinematicAttack(attacker, results, attack_args, action, ...)
@@ -209,16 +202,25 @@ local function cdr_lIsActionCameraHideableObject(cam_pos, o)
 	return IsKindOfClasses(o, hide_nearby_objs)
 end
 
+local cdr_isAiming = false
+local cdr_old_SetActionCameraNoFallback = SetActionCameraNoFallback
+function SetActionCameraNoFallback(...)
+	cdr_isAiming = true
+	local res = cdr_old_SetActionCameraNoFallback(...)
+	cdr_isAiming = false
+	return res
+end
+
 function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_rotate)
 	no_rotate = no_rotate or false
 	local fp_cam
 
 	if force_fp then
-		fp_cam = GetFPCameraFromPreset(attacker, target, Presets.ActionCameraDef.Default.FirstPerson_Cam)
+		fp_cam = GetFPCameraFromPreset(attacker, target, Presets.ActionCameraDef.Default.FirstPerson_Cam, no_rotate)
 		return fp_cam[1], fp_cam[2], fp_cam[3]
 	end
 
-	local valid_cameras, all_cameras = {}, {}
+	local valid_cameras = {}
 	local output = {
 		sources = {},
 		dests = {}, --target pt
@@ -247,7 +249,11 @@ function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_ro
 				fp_cam = GetFPCameraFromPreset(attacker, target, preset, no_rotate)
 			else
 				GetACamsForPreset(attacker, target, preset, cam_positioning, no_rotate, output)
-                GetACamsForPreset(target, attacker, preset, cam_positioning, no_rotate, output)
+				
+				CombatLog("important", "IsAiming: " .. tostring(cdr_isAiming))
+				if not cdr_isAiming then
+					GetACamsForPreset(target, attacker, preset, cam_positioning, no_rotate, output)
+				end
 			end
 		end
 	end
@@ -305,9 +311,7 @@ function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_ro
 		end
 	end
 
-	all_cameras = cameras
-
-	if next(valid_cameras) then
+	if #valid_cameras > 0 then
 		local seed = xxhash(IsPoint(attacker) and attacker or attacker:GetPos(), GetActionCameraTargetPos(target))
 		local rand = BraidRandom(seed, #valid_cameras)
 		local camera = valid_cameras[1 + rand]
@@ -318,13 +322,14 @@ function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_ro
 	local tie
 	local best_match
 
-	for i = 1, #all_cameras do
-		local cam = all_cameras[i]
+	for i = 1, #cameras do
+		local cam = cameras[i]
 		if cam[4].target_visible then
 			if not best_match then
 				best_match = cam
 			elseif #cam[4] < #best_match[4] then
 				best_match = cam
+				tie = false
 			elseif #cam[4] == #best_match[4] then
 				tie = #cam[4]
 			end
@@ -332,8 +337,8 @@ function cdr_CalcActionCamera(attacker, target, cam_positioning, force_fp, no_ro
 	end
 
 	if tie then
-		for i = 1, #all_cameras do
-			local cam = all_cameras[i]
+		for i = 1, #cameras do
+			local cam = cameras[i]
 			local col_cam = cam[4]
 			if #col_cam == tie then
 				local col_best_match = best_match[4]
@@ -380,16 +385,12 @@ function SnapCameraToObj(obj, mode, floor, time, easing, ...)
         end
 
         if options:GetProperty("cdr_toggle_SnapCameraPlayerActions") then
-            local igiModeDlg = GetInGameInterfaceModeDlg()
-            if igiModeDlg then
-                local modeClass = igiModeDlg.class
-                if modeClass:find("Attack") or
-                   modeClass:find("Moving") or
-                   modeClass:find("Aim") or
-                   modeClass:find("AreaAim") then
-                    return
-                 end
-             end
+            local igiMode = GetInGameInterfaceMode() or ""
+            if igiMode == "IModeCombatAttack" or
+               igiMode == "IModeCombatMovement" or
+               igiMode == "IModeCombatAreaAim" then
+                return
+            end
         end
     end
     return cdr_old_SnapCameraToObj(obj, mode, floor, time, easing, ...)
