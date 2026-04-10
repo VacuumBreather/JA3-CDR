@@ -173,7 +173,7 @@ function IsCinematicAttack(attacker, results, attack_args, action, ...)
 
                 -- If no player unit is involved, vanilla ExecFirearmAttacks will skip the camera.
                 -- We trigger it here manually and return false to prevent redundant/broken calls.
-                SetAutoRemoveActionCamera(attacker, target, false, false, false, (interpolation or true) and (default_interpolation_time or 700))
+                SetAutoRemoveActionCamera(attacker, target, false, false, 0, 0)
                 return false, false
             end
 
