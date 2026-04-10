@@ -165,6 +165,9 @@ end
 
 local cdr_old_IsCinematicAttack = IsCinematicAttack
 function IsCinematicAttack(attacker, results, attack_args, action, ...)
+	if not g_Combat then 
+		return false, false 
+	end
 	if ShouldForceCinematic(attacker) then
 		return "forced", true
 	end
